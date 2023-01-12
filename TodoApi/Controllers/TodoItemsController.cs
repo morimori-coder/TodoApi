@@ -28,7 +28,19 @@ namespace TodoApi.Controllers
           {
               return NotFound();
           }
-            return await _context.TodoItems.ToListAsync();
+            List<TodoItem> result = new List<TodoItem>();
+
+            try
+            {
+                 result = await _context.TodoItems.ToListAsync();
+                
+            }
+            catch (Exception ex)
+            {
+                System.IO.File.WriteAllText(@"C:\source\repos\log\ControllerLog.log", ex.ToString());
+            }
+            return result;
+
         }
 
         // GET: api/TodoItems/5
