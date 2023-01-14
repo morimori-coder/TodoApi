@@ -12,6 +12,18 @@ builder.Services.AddDbContext<TodoContext>(opt =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// セッション関連
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options => 
+{
+    options.Cookie.Name = "SampleCookie";
+    //options.IdleTimeout = TimeSpan.FromSeconds(10);
+    options.Cookie.HttpOnly= true;
+    options.Cookie.IsEssential= true;
+    options.Cookie.MaxAge = TimeSpan.FromSeconds(10);
+    options.Cookie.SecurePolicy= CookieSecurePolicy.Always;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -24,6 +36,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+app.UseCookiePolicy();
+app.UseSession();
 
 app.MapControllers();
 

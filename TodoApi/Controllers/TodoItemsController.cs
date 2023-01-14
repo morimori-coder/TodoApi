@@ -24,7 +24,10 @@ namespace TodoApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems()
         {
-          if (_context.TodoItems == null)
+            HttpContext.Session.SetString("key", "hoge");
+            var temp = HttpContext.Session.GetString("key");
+
+            if (_context.TodoItems == null)
           {
               return NotFound();
           }
