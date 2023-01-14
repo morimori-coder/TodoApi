@@ -38,6 +38,7 @@ namespace TodoApi.Controllers
             catch (Exception ex)
             {
                 System.IO.File.WriteAllText(@"C:\source\repos\log\ControllerLog.log", ex.ToString());
+                throw ex;
             }
             return result;
 
