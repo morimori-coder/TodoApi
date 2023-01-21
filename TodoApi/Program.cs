@@ -13,15 +13,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // セッション関連
+// ここでCookieを生成しているはず
 builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options => 
+builder.Services.AddSession(options =>
 {
     options.Cookie.Name = "SampleCookie";
-    //options.IdleTimeout = TimeSpan.FromSeconds(10);
-    options.Cookie.HttpOnly= true;
-    options.Cookie.IsEssential= true;
-    options.Cookie.MaxAge = TimeSpan.FromSeconds(10);
-    options.Cookie.SecurePolicy= CookieSecurePolicy.Always;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.MaxAge = TimeSpan.FromHours(1);
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 var app = builder.Build();

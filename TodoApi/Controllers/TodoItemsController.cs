@@ -24,19 +24,16 @@ namespace TodoApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems()
         {
-            HttpContext.Session.SetString("key", "hoge");
-            var temp = HttpContext.Session.GetString("key");
-
             if (_context.TodoItems == null)
-          {
-              return NotFound();
-          }
+            {
+                return NotFound();
+            }
             List<TodoItem> result = new List<TodoItem>();
 
             try
             {
-                 result = await _context.TodoItems.ToListAsync();
-                
+                result = await _context.TodoItems.ToListAsync();
+
             }
             catch (Exception ex)
             {
@@ -61,6 +58,11 @@ namespace TodoApi.Controllers
             {
                 return NotFound();
             }
+
+            var temp = HttpContext.Session.GetString("key");
+            var temp2 = HttpContext.Session.GetString("Name");
+
+            var value = HttpContext.Request.Cookies;
 
             return todoItem;
         }
@@ -101,10 +103,12 @@ namespace TodoApi.Controllers
         [HttpPost]
         public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem)
         {
-          if (_context.TodoItems == null)
-          {
-              return Problem("Entity set 'TodoContext.TodoItems'  is null.");
-          }
+            HttpContext.Session.SetString("key", "99");
+            HttpContext.Session.SetString("Name", todoItem.Name);
+            if (_context.TodoItems == null)
+            {
+                return Problem("Entity set 'TodoContext.TodoItems'  is null.");
+            }
             _context.TodoItems.Add(todoItem);
             await _context.SaveChangesAsync();
 
