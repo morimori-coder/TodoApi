@@ -12,9 +12,21 @@ builder.Services.AddDbContext<TodoContext>(opt =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+IConfiguration configuration = new ConfigurationBuilder()
+      .AddJsonFile("appsettings.json", true, true)
+      .Build();
+
+IConfigurationSection section = configuration.GetSection("ConnectionStrings");
+var cacheSection = section.GetSection("CacheConnection");
+
 // セッション関連
-// ここでCookieを生成しているはず
-builder.Services.AddDistributedMemoryCache();
+// SQLServer分散キャッシュの有効化
+builder.Services.AddDistributedSqlServerCache(options =>
+{
+    options.ConnectionString = cacheSection.Value;
+    options.SchemaName = "dbo";
+    options.TableName = "AppCache";
+});
 builder.Services.AddSession(options =>
 {
     options.Cookie.Name = "SampleCookie";

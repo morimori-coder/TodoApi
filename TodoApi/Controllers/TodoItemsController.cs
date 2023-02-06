@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 using TodoApi.Models;
 
 namespace TodoApi.Controllers
@@ -15,9 +19,12 @@ namespace TodoApi.Controllers
     {
         private readonly TodoContext _context;
 
-        public TodoItemsController(TodoContext context)
+        private IDistributedCache _distributedCache { get; }
+
+        public TodoItemsController(TodoContext context, IDistributedCache distributedCache)
         {
             _context = context;
+            _distributedCache = distributedCache;
         }
 
         // GET: api/TodoItems
@@ -33,7 +40,7 @@ namespace TodoApi.Controllers
             try
             {
                 result = await _context.TodoItems.ToListAsync();
-
+               
             }
             catch (Exception ex)
             {
@@ -48,7 +55,22 @@ namespace TodoApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<TodoItem>> GetTodoItem(int id)
         {
-          if (_context.TodoItems == null)
+            // Find cached item
+            byte[] objectFromCache = await _distributedCache.GetAsync(id.ToString());
+
+            if (objectFromCache != null)
+            {
+                // Deserialize it
+                var jsonToDeserialize = System.Text.Encoding.UTF8.GetString(objectFromCache);
+                var cachedResult = JsonSerializer.Deserialize<TodoItem>(jsonToDeserialize);
+                if (cachedResult != null)
+                {
+                    HttpContext.Response.Cookies.Append("TodoItem", jsonToDeserialize);
+                    // If found, then return it
+                    return cachedResult;
+                }
+            }
+            if (_context.TodoItems == null)
           {
               return NotFound();
           }
@@ -58,12 +80,6 @@ namespace TodoApi.Controllers
             {
                 return NotFound();
             }
-
-            var temp = HttpContext.Session.GetString("key");
-            var temp2 = HttpContext.Session.GetString("Name");
-
-            var value = HttpContext.Request.Cookies;
-
             return todoItem;
         }
 
@@ -103,14 +119,30 @@ namespace TodoApi.Controllers
         [HttpPost]
         public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem)
         {
-            HttpContext.Session.SetString("key", "99");
-            HttpContext.Session.SetString("Name", todoItem.Name);
-            if (_context.TodoItems == null)
+            try 
             {
-                return Problem("Entity set 'TodoContext.TodoItems'  is null.");
+                if (_context.TodoItems == null)
+                {
+                    return Problem("Entity set 'TodoContext.TodoItems'  is null.");
+                }
+
+
+                // Serialize the response
+                byte[] objectToCache = JsonSerializer.SerializeToUtf8Bytes(todoItem);
+                var jsonToDeserialize = System.Text.Encoding.UTF8.GetString(objectToCache);
+                HttpContext.Response.Cookies.Append("TodoItem", jsonToDeserialize);
+
+                // Cache it
+                //await _distributedCache.SetAsync(todoItem.Id.ToString(), objectToCache);
+                await _distributedCache.SetStringAsync(todoItem.Id.ToString(), jsonToDeserialize, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(9) });
+
+                _context.TodoItems.Add(todoItem);
+                await _context.SaveChangesAsync();
+            } catch (Exception ex) 
+            {
+                System.IO.File.WriteAllText(@"C:\source\repos\log\ControllerLog.log", ex.ToString());
+                throw ex;
             }
-            _context.TodoItems.Add(todoItem);
-            await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetTodoItem", new { id = todoItem.Id }, todoItem);
         }
