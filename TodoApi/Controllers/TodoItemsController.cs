@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using TodoApi.Models;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
 
 namespace TodoApi.Controllers
 {
@@ -58,6 +61,9 @@ namespace TodoApi.Controllers
             // Find cached item
             byte[] objectFromCache = await _distributedCache.GetAsync(id.ToString());
 
+            var claims = HttpContext.User.Claims;
+            var userId = claims?.FirstOrDefault(x => x.Type.Equals(ClaimTypes.Name))?.Value;
+
             if (objectFromCache != null)
             {
                 // Deserialize it
@@ -65,7 +71,7 @@ namespace TodoApi.Controllers
                 var cachedResult = JsonSerializer.Deserialize<TodoItem>(jsonToDeserialize);
                 if (cachedResult != null)
                 {
-                    HttpContext.Response.Cookies.Append("TodoItem", jsonToDeserialize);
+                    //HttpContext.Response.Cookies.Append("TodoItem", jsonToDeserialize);
                     // If found, then return it
                     return cachedResult;
                 }
@@ -126,15 +132,22 @@ namespace TodoApi.Controllers
                     return Problem("Entity set 'TodoContext.TodoItems'  is null.");
                 }
 
+                if (!todoItem.Name.Equals("abc"))
+                {
+                    return Unauthorized();
+                }
 
                 // Serialize the response
                 byte[] objectToCache = JsonSerializer.SerializeToUtf8Bytes(todoItem);
                 var jsonToDeserialize = System.Text.Encoding.UTF8.GetString(objectToCache);
-                HttpContext.Response.Cookies.Append("TodoItem", jsonToDeserialize);
-
-                // Cache it
-                //await _distributedCache.SetAsync(todoItem.Id.ToString(), objectToCache);
+ 
                 await _distributedCache.SetStringAsync(todoItem.Id.ToString(), jsonToDeserialize, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(9) });
+
+                var claims = new List<Claim>() { new Claim(ClaimTypes.Sid, "abc") };
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+
+
 
                 _context.TodoItems.Add(todoItem);
                 await _context.SaveChangesAsync();
