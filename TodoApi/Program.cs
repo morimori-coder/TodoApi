@@ -30,14 +30,6 @@ builder.Services.AddDistributedSqlServerCache(options =>
     options.SchemaName = "dbo";
     options.TableName = "AppCache";
 });
-builder.Services.AddSession(options =>
-{
-    options.Cookie.Name = "SampleCookie";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-    options.Cookie.MaxAge = TimeSpan.FromHours(1);
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-});
 
 var app = builder.Build();
 
